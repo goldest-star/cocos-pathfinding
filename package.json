@@ -1,0 +1,14 @@
+{
+  "name": "2D Pathfinding",
+  "uuid": "168f6e35-7e6b-4be9-a034-bf203c59a040",
+  "version": "3.6.2",
+  "creator": {
+    "version": "3.6.2"
+  },
+  "dependencies": {
+    "@types/pathfinding": "^0.0.6",
+    "density-clustering": "^1.3.0",
+    "hull.js": "^1.0.3",
+    "pathfinding": "^0.4.18"
+  }
+}
