@@ -1,4 +1,15 @@
-import { _decorator, Component, Node, TiledLayer, Vec2, Graphics, Color, Vec3, UITransform } from "cc";
+import {
+  _decorator,
+  Component,
+  Node,
+  TiledLayer,
+  Vec2,
+  Graphics,
+  Color,
+  Vec3,
+  UITransform,
+  math,
+} from "cc";
 const { ccclass, property } = _decorator;
 import PF, { DiagonalMovement, Finder, Heuristic } from "pathfinding";
 
@@ -16,6 +27,13 @@ declare module "pathfinding" {
   }
 }
 
+const PATHFINDING_INTERVAL = 1000;
+const BLOCKED = 1;
+const WALKABLE = 0;
+const BLOCKED_FILL_COLOR = new Color(255, 0, 0, 128);
+const WALKABLE_FILL_COLOR = new Color(0, 255, 0, 128);
+const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
+
 @ccclass("Pathfinding")
 export class Pathfinding extends Component {
   @property({ type: Node }) target: Node = null!;
@@ -24,10 +42,17 @@ export class Pathfinding extends Component {
   @property debug = false;
 
   tiledLayer: TiledLayer | null = null;
-
   targetPosition: Vec2 = new Vec2();
-
+  debugGraphic: Graphics | null = null;
+  tiledLayerBoundingBox: math.Rect;
+  nodeHeight: number = 0;
   matrix: number[][] = [];
+  matrixWidth: number = 0;
+  matrixHeight: number = 0;
+
+  tileWidth: number = 0;
+  tileHeight: number = 0;
+  path: number[][] = [];
   grid: PF.Grid;
 
   finder: PF.AStarFinder = new PF.AStarFinder({
@@ -37,61 +62,143 @@ export class Pathfinding extends Component {
 
   start() {
     this.tiledLayer = this.tiledLayerNode.getComponent(TiledLayer);
-    this.createMatrixFromTiledLayer();
-    if (this.debug) this.createMatrixDebug();
+    this.getLayerSize();
+    this.getTileSize();
+    this.getTileLayerSize();
+    this.createMatrix();
+    this.populateMatrixFromVerticesData();
+    this.createGrid();
+    this.createPath();
+    if (this.debug) {
+      this.createDebugLayer();
+      this.createMatrixDebug();
+      this.createPathDebug();
+    }
+    setInterval(() => {
+      this.createPath();
+      if (this.debug) {
+        this.createPathDebug();
+      }
+    }, PATHFINDING_INTERVAL);
   }
 
-  createMatrixFromTiledLayer() {
-    console.log(this.tiledLayer);
-    const { width: matrixWidth, height: matrixHeight } =
-      this.tiledLayer.getLayerSize();
-      const vertices = this.tiledLayer.vertices;
+  getLayerSize() {
+    const uitransform = this.tiledLayerNode.getComponent(UITransform);
+    this.tiledLayerBoundingBox = uitransform.getBoundingBox();
+  }
 
-    // create a matrix of 0s
-    this.matrix = Array(matrixHeight)
-      .fill(0)
-      .map(() => Array(matrixWidth).fill(0));
+  getTileLayerSize() {
+    const { width, height } = this.tiledLayer.getLayerSize();
+    this.matrixWidth = width;
+    this.matrixHeight = height;
+  }
 
+  getTileSize() {
+    const { width: height } = this.tiledLayer.getMapTileSize();
+    this.tileWidth = height;
+    this.tileHeight = height;
+  }
+
+  createMatrix() {
+    this.matrix = Array(this.matrixHeight).fill(BLOCKED).map(() => Array(this.matrixWidth).fill(BLOCKED));
+  }
+
+  populateMatrixFromVerticesData() {
+    const { vertices } = this.tiledLayer;
+    // fill the matrix with the vertices
     for (let row = 0; row < vertices.length; row++) {
-        if (vertices[row] !== undefined) {
-            const cols = Object.keys(vertices[row]).map((key) => parseInt(key)).filter(predicate => predicate !== NaN);
-            for (const col of cols) {
-                this.matrix[row][col] = 1;
-            }
+      if (vertices[row] !== undefined) {
+        const cols = Object.keys(vertices[row])
+          .map((key) => parseInt(key))
+          .filter((predicate) => predicate !== NaN);
+        for (const col of cols) {
+          this.matrix[row][col] = WALKABLE;
         }
+      }
     }
+  }
 
-}
+  createGrid() {
+    this.grid = new PF.Grid(this.matrix);
+  }
 
-createMatrixDebug() {
-    const { width: tileSizeWidth, height: tileSizeHeight } = this.tiledLayer.getMapTileSize();
+  convertWorldPositionToMatrixPosition(worldPosition: Vec3): [number, number] {
+
+    const x = Math.floor((worldPosition.x + Math.abs(this.tiledLayerBoundingBox.x)) / this.tileWidth);
+    const y = Math.floor((worldPosition.y + Math.abs(this.tiledLayerBoundingBox.y)) / this.tileHeight);
+
+    return [x, y];
+  }
+
+
+  createDebugLayer() {
     const canvas = this.node.parent;
+    const uitransform = canvas.getComponent(UITransform);
     const node = new Node();
     canvas.addChild(node);
     const tiledLayerWorldPosition = this.tiledLayerNode.getWorldPosition();
-    node.setWorldPosition(tiledLayerWorldPosition);
+    const position = uitransform.convertToNodeSpaceAR(tiledLayerWorldPosition);
+    node.setPosition(position);
     node.layer = canvas.layer;
-    const graphic = node.addComponent(Graphics);
+    this.debugGraphic = node.addComponent(Graphics);
+  }
 
-    const { width: matrixWidth, height: matrixHeight } =
-        this.tiledLayer.getLayerSize();
-
-    graphic.lineWidth = 10;
-    graphic.strokeColor = new Color(255, 0, 0, 255);
-    graphic.rect(0, 0, matrixWidth * tileSizeWidth, matrixHeight * tileSizeHeight);
-    graphic.stroke();
-
-    graphic.lineWidth = 1;
-    graphic.strokeColor = new Color(0, 255, 0, 255);
-    graphic.fillColor = new Color(0, 255, 0, 128);
+  createMatrixDebug() {
     this.matrix.forEach((row, y) => {
-        row.forEach((col, x) => {
-            if (col === 1) {
-                graphic.rect(x * tileSizeWidth, y * tileSizeHeight, tileSizeWidth, tileSizeHeight);
-                graphic.stroke();
-                graphic.fill();
-            }
-        });
+      row.forEach((col, x) => {
+        if (col === BLOCKED) {
+          this.debugGraphic.fillColor = BLOCKED_FILL_COLOR;
+          this.debugGraphic.rect(
+            x * this.tileWidth + this.tiledLayerBoundingBox.x,
+            y * this.tileHeight + this.tiledLayerBoundingBox.y,
+            this.tileWidth,
+            this.tileHeight
+          );
+          this.debugGraphic.fill();
+        }
+        if (col === WALKABLE) {
+          this.debugGraphic.fillColor = WALKABLE_FILL_COLOR;
+          this.debugGraphic.rect(
+            x * this.tileWidth + this.tiledLayerBoundingBox.x,
+            y * this.tileHeight + this.tiledLayerBoundingBox.y,
+            this.tileWidth,
+            this.tileHeight
+          );
+          this.debugGraphic.fill();
+        }
+      });
+    });
+  }
+
+  createPath() {
+
+    const targetWorldPosition = this.target.getWorldPosition();
+    const ownerWorldPosition = this.node.getWorldPosition();
+
+    const uitransform = this.tiledLayerNode.getComponent(UITransform);
+    const targetPosition = uitransform.convertToNodeSpaceAR(targetWorldPosition);
+    const ownerPosition = uitransform.convertToNodeSpaceAR(ownerWorldPosition);
+
+    const [targetX, targetY] = this.convertWorldPositionToMatrixPosition(targetPosition);
+    const [ownerX, ownerY] = this.convertWorldPositionToMatrixPosition(ownerPosition);
+
+    const finder = new PF.AStarFinder();
+    const clone = this.grid.clone();
+    this.path = finder.findPath(ownerX, ownerY, targetX, targetY, this.grid);
+    this.grid = clone;
+  }
+
+  createPathDebug() {
+    // this.debugGraphic.clear();
+    this.path.forEach(([x, y]) => {
+          this.debugGraphic.fillColor = PATH_FILL_COLOR;
+          this.debugGraphic.rect(
+            x * this.tileWidth + this.tiledLayerBoundingBox.x,
+            y * this.tileHeight + this.tiledLayerBoundingBox.y,
+            this.tileWidth,
+            this.tileHeight
+          );
+          this.debugGraphic.fill();
     });
   }
 
