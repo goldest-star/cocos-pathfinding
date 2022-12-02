@@ -9,6 +9,7 @@ import {
   Vec3,
   UITransform,
   math,
+  tween,
 } from "cc";
 const { ccclass, property } = _decorator;
 import PF, { DiagonalMovement, Finder, Heuristic } from "pathfinding";
@@ -27,7 +28,6 @@ declare module "pathfinding" {
   }
 }
 
-const PATHFINDING_INTERVAL = 1000;
 const BLOCKED = 1;
 const WALKABLE = 0;
 const BLOCKED_FILL_COLOR = new Color(255, 0, 0, 128);
@@ -38,8 +38,8 @@ const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
 export class Pathfinding extends Component {
   @property({ type: Node }) target: Node = null!;
   @property({ type: Node }) tiledLayerNode: Node = null!;
-
   @property debug = false;
+  @property moveDuration = 0.5;
 
   tiledLayer: TiledLayer | null = null;
   targetPosition: Vec2 = new Vec2();
@@ -57,7 +57,7 @@ export class Pathfinding extends Component {
 
   finder: PF.AStarFinder = new PF.AStarFinder({
     allowDiagonal: true,
-    dontCrossCorners: true,
+    dontCrossCorners: false,
   });
 
   start() {
@@ -71,15 +71,28 @@ export class Pathfinding extends Component {
     this.createPath();
     if (this.debug) {
       this.createDebugLayer();
+    }
+    this.startFollowingPath();
+  }
+
+  startFollowingPath() {
+    this.createPath();
+    if (this.debug) {
+      this.debugGraphic.clear();
       this.createMatrixDebug();
       this.createPathDebug();
     }
-    setInterval(() => {
-      this.createPath();
-      if (this.debug) {
-        this.createPathDebug();
-      }
-    }, PATHFINDING_INTERVAL);
+    const nextPosition = this.path[1];
+    if (nextPosition) {
+      const [x, y] = nextPosition;
+      const position = this.convertMatrixPositionToPosition([x, y]);
+      tween(this.node).to(this.moveDuration, { position }, {
+        onComplete: this.startFollowingPath.bind(this)
+      }).start();
+    } else {
+      console.log("no path");
+      // this.startFollowingPath();
+    }
   }
 
   getLayerSize() {
@@ -122,13 +135,23 @@ export class Pathfinding extends Component {
     this.grid = new PF.Grid(this.matrix);
   }
 
-  convertWorldPositionToMatrixPosition(worldPosition: Vec3): [number, number] {
+  convertPositionToMatrixPosition(worldPosition: Vec3): [number, number] {
 
     const x = Math.floor((worldPosition.x + Math.abs(this.tiledLayerBoundingBox.x)) / this.tileWidth);
     const y = Math.floor((worldPosition.y + Math.abs(this.tiledLayerBoundingBox.y)) / this.tileHeight);
 
     return [x, y];
   }
+
+  convertMatrixPositionToPosition([x, y]: [number, number]): Vec3 {
+    const worldPosition = new Vec3(
+      x * this.tileWidth + this.tiledLayerBoundingBox.x,
+      y * this.tileHeight + this.tiledLayerBoundingBox.y,
+      0
+    );
+    return worldPosition;
+  }
+
 
 
   createDebugLayer() {
@@ -172,6 +195,8 @@ export class Pathfinding extends Component {
 
   createPath() {
 
+    // const t0 = performance.now();
+
     const targetWorldPosition = this.target.getWorldPosition();
     const ownerWorldPosition = this.node.getWorldPosition();
 
@@ -179,17 +204,22 @@ export class Pathfinding extends Component {
     const targetPosition = uitransform.convertToNodeSpaceAR(targetWorldPosition);
     const ownerPosition = uitransform.convertToNodeSpaceAR(ownerWorldPosition);
 
-    const [targetX, targetY] = this.convertWorldPositionToMatrixPosition(targetPosition);
-    const [ownerX, ownerY] = this.convertWorldPositionToMatrixPosition(ownerPosition);
+    const [targetX, targetY] = this.convertPositionToMatrixPosition(targetPosition);
+    const [ownerX, ownerY] = this.convertPositionToMatrixPosition(ownerPosition);
 
     const finder = new PF.AStarFinder();
     const clone = this.grid.clone();
     this.path = finder.findPath(ownerX, ownerY, targetX, targetY, this.grid);
+    if (this.path.length === 0) {
+      throw new Error("no path, probably target ouf of bounds or in blocked tile");
+    }
     this.grid = clone;
+
+    // const t1 = performance.now();
+    // console.log("Call to doSomething took " + (t1 - t0) + " milliseconds.");
   }
 
   createPathDebug() {
-    // this.debugGraphic.clear();
     this.path.forEach(([x, y]) => {
           this.debugGraphic.fillColor = PATH_FILL_COLOR;
           this.debugGraphic.rect(

@@ -1406,7 +1406,7 @@
     "node": {
       "__id__": 45
     },
-    "_enabled": true,
+    "_enabled": false,
     "__prefab": null,
     "_customMaterial": null,
     "_srcBlendFactor": 2,
@@ -1504,8 +1504,8 @@
     },
     "_lscale": {
       "__type__": "cc.Vec3",
-      "x": 2,
-      "y": 2,
+      "x": 1,
+      "y": 1,
       "z": 1
     },
     "_layer": 33554432,
@@ -1764,7 +1764,8 @@
     "tiledLayerNode": {
       "__id__": 45
     },
-    "debug": true,
+    "debug": false,
+    "moveDuration": 0.5,
     "_id": "90rjbYpdZNjaRq9gLA+E1v"
   },
   {
