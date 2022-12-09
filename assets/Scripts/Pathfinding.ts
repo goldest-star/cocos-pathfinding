@@ -13,6 +13,7 @@ import {
 } from "cc";
 const { ccclass, property } = _decorator;
 import PF, { DiagonalMovement, Finder, Heuristic } from "pathfinding";
+import { AnimationManager } from "./AnimationManager";
 
 declare module "pathfinding" {
   interface FinderOptions extends Heuristic {
@@ -57,10 +58,16 @@ export class Pathfinding extends Component {
 
   finder: PF.AStarFinder = new PF.AStarFinder({
     allowDiagonal: true,
-    dontCrossCorners: false,
+    dontCrossCorners: true,
   });
 
+  AnimationManager: AnimationManager;
+  public isMovingUp = false;
+  public isMovingDown = false;
+  public isMovingLeft = false;
+  public isMovingRight = false;
   start() {
+    this.AnimationManager = this.node.getComponent(AnimationManager);
     this.tiledLayer = this.tiledLayerNode.getComponent(TiledLayer);
     this.getLayerSize();
     this.getTileSize();
@@ -73,6 +80,7 @@ export class Pathfinding extends Component {
       this.createDebugLayer();
     }
     this.startFollowingPath();
+    this.animate();
   }
 
   startFollowingPath() {
@@ -85,13 +93,59 @@ export class Pathfinding extends Component {
     const nextPosition = this.path[1];
     if (nextPosition) {
       const [x, y] = nextPosition;
-      const position = this.convertMatrixPositionToPosition([x, y]);
+      const position = this.convertMatrixPositionToPosition([x, y], true);
       tween(this.node).to(this.moveDuration, { position }, {
-        onComplete: this.startFollowingPath.bind(this)
+        onStart: () => {
+          this.move(this.node.getPosition(), position);
+          this.animate();
+        },
+        onComplete: () => {
+          this.startFollowingPath();
+          this.animate();
+        },
       }).start();
     } else {
       console.log("no path");
       // this.startFollowingPath();
+    }
+  }
+
+  move(oldPosition: Vec3, newPosition: Vec3) {
+    const { x: nextX, y: nextY } = newPosition;
+    const { x: currentX, y: currentY } = oldPosition;
+    if (nextX > currentX) {
+      this.isMovingRight = true;
+      this.isMovingLeft = false;
+    } else if (nextX < currentX) {
+      this.isMovingLeft = true;
+      this.isMovingRight = false;
+    } else {
+      this.isMovingLeft = false;
+      this.isMovingRight = false;
+    }
+    if (nextY > currentY) {
+      this.isMovingUp = true;
+      this.isMovingDown = false;
+    } else if (nextY < currentY) {
+      this.isMovingUp = false;
+      this.isMovingDown = true;
+    } else {
+      this.isMovingUp = false;
+      this.isMovingDown = false;
+    }
+  }
+
+  public animate() {
+    if (this.isMovingLeft) {
+      this.AnimationManager.playWalkLeft();
+    } else if (this.isMovingRight) {
+      this.AnimationManager.playWalkRight();
+    } else if (this.isMovingUp) {
+      this.AnimationManager.playWalkUp();
+    } else if (this.isMovingDown) {
+      this.AnimationManager.playWalkDown();
+    } else {
+      this.AnimationManager.playIdle();
     }
   }
 
@@ -123,7 +177,7 @@ export class Pathfinding extends Component {
       if (vertices[row] !== undefined) {
         const cols = Object.keys(vertices[row])
           .map((key) => parseInt(key))
-          .filter((predicate) => predicate !== NaN);
+          .filter((predicate) => !Number.isNaN(predicate));
         for (const col of cols) {
           this.matrix[row][col] = WALKABLE;
         }
@@ -143,10 +197,12 @@ export class Pathfinding extends Component {
     return [x, y];
   }
 
-  convertMatrixPositionToPosition([x, y]: [number, number]): Vec3 {
+  convertMatrixPositionToPosition([x, y]: [number, number], centered = false): Vec3 {
+    const xSpace = centered ? this.tileWidth / 2 : 0;
+    const ySpace = centered ? this.tileHeight / 2 : 0;
     const worldPosition = new Vec3(
-      x * this.tileWidth + this.tiledLayerBoundingBox.x,
-      y * this.tileHeight + this.tiledLayerBoundingBox.y,
+      x * this.tileWidth + this.tiledLayerBoundingBox.x + xSpace,
+      y * this.tileHeight + this.tiledLayerBoundingBox.y + ySpace,
       0
     );
     return worldPosition;
