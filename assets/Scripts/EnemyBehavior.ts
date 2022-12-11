@@ -35,13 +35,12 @@ const BLOCKED_FILL_COLOR = new Color(255, 0, 0, 128);
 const WALKABLE_FILL_COLOR = new Color(0, 255, 0, 128);
 const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
 
-@ccclass("Pathfinding")
-export class Pathfinding extends Component {
-  @property({ type: Node }) target: Node = null!;
-  @property({ type: Node }) tiledLayerNode: Node = null!;
-  @property debug = false;
-  @property moveDuration = 0.5;
-
+@ccclass("EnemyBehavior")
+export class EnemyBehavior extends Component {
+  target: Node = null!;
+  tiledLayerNode: Node = null!;
+  debug = false;
+  moveDuration = 0.5;
   tiledLayer: TiledLayer | null = null;
   targetPosition: Vec2 = new Vec2();
   debugGraphic: Graphics | null = null;
@@ -50,7 +49,6 @@ export class Pathfinding extends Component {
   matrix: number[][] = [];
   matrixWidth: number = 0;
   matrixHeight: number = 0;
-
   tileWidth: number = 0;
   tileHeight: number = 0;
   path: number[][] = [];
@@ -66,8 +64,13 @@ export class Pathfinding extends Component {
   public isMovingDown = false;
   public isMovingLeft = false;
   public isMovingRight = false;
+
   start() {
     this.AnimationManager = this.node.getComponent(AnimationManager);
+    console.log('start', this.AnimationManager);
+  }
+
+  public init() {
     this.tiledLayer = this.tiledLayerNode.getComponent(TiledLayer);
     this.getLayerSize();
     this.getTileSize();
@@ -81,6 +84,24 @@ export class Pathfinding extends Component {
     }
     this.startFollowingPath();
     this.animate();
+  }
+
+
+
+  public setDebug(debug: boolean) {
+    this.debug = debug;
+  }
+
+  public setTarget(target: Node) {
+    this.target = target;
+  }
+
+  public setTiledLayerNode(tiledLayerNode: Node) {
+    this.tiledLayerNode = tiledLayerNode;
+  }
+
+  public setMoveDuration(moveDuration: number) {
+    this.moveDuration = moveDuration;
   }
 
   startFollowingPath() {
@@ -106,6 +127,10 @@ export class Pathfinding extends Component {
       }).start();
     } else {
       console.log("no path");
+      this.isMovingDown = false;
+      this.isMovingUp = false;
+      this.isMovingLeft = false;
+      this.isMovingRight = false;
       // this.startFollowingPath();
     }
   }
@@ -136,6 +161,9 @@ export class Pathfinding extends Component {
   }
 
   public animate() {
+    if (this.AnimationManager === undefined) {
+      return;
+    }
     if (this.isMovingLeft) {
       this.AnimationManager.playWalkLeft();
     } else if (this.isMovingRight) {
