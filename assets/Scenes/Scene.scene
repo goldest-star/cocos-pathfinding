@@ -1345,7 +1345,7 @@
       "__id__": 5
     },
     "_children": [],
-    "_active": false,
+    "_active": true,
     "_components": [
       {
         "__id__": 46
@@ -1913,17 +1913,17 @@
     "spawnPointObjectLayer": {
       "__id__": 48
     },
-    "WalkableTiledLayer": {
+    "walkableTiledLayer": {
       "__id__": 45
     },
-    "Target": {
+    "target": {
       "__id__": 53
     },
     "enemyPrefab": {
       "__uuid__": "3563da8f-3119-4caa-adfd-828e15fddbb1",
       "__expectedType__": "cc.Prefab"
     },
-    "debug": false,
+    "debug": true,
     "_id": "94+rSQLyRA66UD8P5yCtpw"
   },
   {

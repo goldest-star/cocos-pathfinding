@@ -10,9 +10,10 @@ import {
   Color,
   Prefab,
   instantiate,
+  TiledLayer,
 } from "cc";
 const { ccclass, property } = _decorator;
-import { EnemyBehavior } from "./EnemyBehavior";
+import { Enemy } from "./Enemy";
 
 export interface TiledObject {
   id: string;
@@ -37,8 +38,8 @@ const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
 @ccclass("EnemyManager")
 export class EnemyManager extends Component {
   @property({ type: Node }) spawnPointObjectLayer: Node = null;
-  @property({ type: Node }) WalkableTiledLayer: Node = null;
-  @property({ type: Node }) Target: Node = null;
+  @property({ type: Node }) walkableTiledLayer: Node = null;
+  @property({ type: Node }) target: Node = null;
   tiledObjectGroup: TiledObjectGroup = null;
   enememySpawnPoints: Vec3[] = [];
   uitransform: UITransform = null;
@@ -64,17 +65,17 @@ export class EnemyManager extends Component {
 
   public spawnEnemy() {
     const enemy = instantiate(this.enemyPrefab);
-    const enemyBehavior = enemy.getComponent(EnemyBehavior);
-    console.log(enemyBehavior);
-    enemyBehavior.setTarget(this.Target);
-    enemyBehavior.setTiledLayerNode(this.WalkableTiledLayer);
-    enemyBehavior.setDebug(this.debug);
-    enemyBehavior.setMoveDuration(0.3);
+    const enemyBehavior = enemy.getComponent(Enemy);
     const spawnPoint = this.enememySpawnPoints.at(Math.random() * this.enememySpawnPoints.length);
     enemy.setPosition(spawnPoint);
     const canvas = this.node.parent;
     canvas.addChild(enemy);
-    enemyBehavior.init();
+    setTimeout(handler => {
+      enemyBehavior.followTarget(this.walkableTiledLayer, this.target);
+    }, 0);
+    setTimeout(handler => {
+      enemyBehavior.stopMove()
+    }, 5000)
 }
 
   spawnPointToWorldPosition(spawnPoint: TiledObject) {
