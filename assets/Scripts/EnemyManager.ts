@@ -11,6 +11,7 @@ import {
   Prefab,
   instantiate,
   TiledLayer,
+  v3,
 } from "cc";
 const { ccclass, property } = _decorator;
 import { Enemy } from "./Enemy";
@@ -33,7 +34,7 @@ export interface Offset {
   y: number;
 }
 
-const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
+const PATH_FILL_COLOR = new Color(0, 255, 255, 255);
 
 @ccclass("EnemyManager")
 export class EnemyManager extends Component {
@@ -52,7 +53,6 @@ export class EnemyManager extends Component {
     this.uitransform = this.node.getComponent(UITransform);
     this.tiledObjectGroup.getObjects().forEach((object) => {
       const tiledObject = object as TiledObject;
-      console.log(tiledObject);
       const point = this.spawnPointToWorldPosition(tiledObject);
       this.enememySpawnPoints.push(point);
     });
@@ -60,7 +60,7 @@ export class EnemyManager extends Component {
       this.createDebugLayer();
       this.creteSpawnPointDebug();
     }
-    this.schedule(this.spawnEnemy, 1);
+    this.schedule(this.spawnEnemy, 3);
   }
 
   public spawnEnemy() {
@@ -73,14 +73,11 @@ export class EnemyManager extends Component {
     setTimeout(handler => {
       enemyBehavior.followTarget(this.walkableTiledLayer, this.target);
     }, 0);
-    setTimeout(handler => {
-      enemyBehavior.stopMove()
-    }, 5000)
 }
 
   spawnPointToWorldPosition(spawnPoint: TiledObject) {
-    const { height } = spawnPoint;
-    const position = new Vec3(spawnPoint.x, spawnPoint.y - height, 0);
+    const { width, height } = spawnPoint;
+    const position = new Vec3(spawnPoint.x + width / 2, spawnPoint.y - height / 2, 0);
     const worldPosition = this.uitransform.convertToNodeSpaceAR(position);
     return worldPosition;
   }
@@ -101,7 +98,7 @@ export class EnemyManager extends Component {
   creteSpawnPointDebug() {
     this.enememySpawnPoints.forEach((spawnPoint) => {
       this.debugGraphic.fillColor = PATH_FILL_COLOR;
-      this.debugGraphic.rect(spawnPoint.x, spawnPoint.y, 16, 16);
+      this.debugGraphic.rect(spawnPoint.x - 8, spawnPoint.y - 8, 16, 16);
       this.debugGraphic.fill();
     });
   }

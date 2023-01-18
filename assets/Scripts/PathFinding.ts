@@ -26,11 +26,11 @@ const PATH_FILL_COLOR = new Color(0, 0, 255, 128);
 
 @ccclass("PathFinding")
 export class PathFinding extends Component {
+  @property debug = false;
   private _target: Node = null!;
   private _tiledLayerWalkableNode: Node = null!;
-  private _debug = false;
   private _tiledLayer: TiledLayer | null = null;
-  private _debugGraphic: Graphics | null = null;
+  private debugGraphic: Graphics | null = null;
   private _tiledLayerBoundingBox: math.Rect;
   private _matrix: number[][] = [];
   private _matrixWidth: number = 0;
@@ -53,14 +53,13 @@ export class PathFinding extends Component {
     this._createMatrix();
     this._populateMatrixFromVerticesData();
     this._createGrid();
-    this._createPath();
-    if (this._debug) {
+    if (this.debug) {
       this._createDebugLayer();
     }
   }
 
   public setDebug(debug: boolean) {
-    this._debug = debug;
+    this.debug = debug;
   }
 
   public setTarget(target: Node) {
@@ -73,8 +72,8 @@ export class PathFinding extends Component {
 
   public getNextPosition() {
     this._createPath();
-    if (this._debug) {
-      this._debugGraphic.clear();
+    if (this.debug) {
+      this.debugGraphic.clear();
       this._createMatrixDebug();
       this._createPathDebug();
     }
@@ -159,31 +158,31 @@ export class PathFinding extends Component {
     const position = uitransform.convertToNodeSpaceAR(tiledLayerWorldPosition);
     node.setPosition(position);
     node.layer = canvas.layer;
-    this._debugGraphic = node.addComponent(Graphics);
+    this.debugGraphic = node.addComponent(Graphics);
   }
 
   private _createMatrixDebug() {
     this._matrix.forEach((row, y) => {
       row.forEach((col, x) => {
         if (col === BLOCKED) {
-          this._debugGraphic.fillColor = BLOCKED_FILL_COLOR;
-          this._debugGraphic.rect(
+          this.debugGraphic.fillColor = BLOCKED_FILL_COLOR;
+          this.debugGraphic.rect(
             x * this._tileWidth + this._tiledLayerBoundingBox.x,
             y * this._tileHeight + this._tiledLayerBoundingBox.y,
             this._tileWidth,
             this._tileHeight
           );
-          this._debugGraphic.fill();
+          this.debugGraphic.fill();
         }
         if (col === WALKABLE) {
-          this._debugGraphic.fillColor = WALKABLE_FILL_COLOR;
-          this._debugGraphic.rect(
+          this.debugGraphic.fillColor = WALKABLE_FILL_COLOR;
+          this.debugGraphic.rect(
             x * this._tileWidth + this._tiledLayerBoundingBox.x,
             y * this._tileHeight + this._tiledLayerBoundingBox.y,
             this._tileWidth,
             this._tileHeight
           );
-          this._debugGraphic.fill();
+          this.debugGraphic.fill();
         }
       });
     });
@@ -217,14 +216,14 @@ export class PathFinding extends Component {
 
   private _createPathDebug() {
     this._path.forEach(([x, y]) => {
-          this._debugGraphic.fillColor = PATH_FILL_COLOR;
-          this._debugGraphic.rect(
+          this.debugGraphic.fillColor = PATH_FILL_COLOR;
+          this.debugGraphic.rect(
             x * this._tileWidth + this._tiledLayerBoundingBox.x,
             y * this._tileHeight + this._tiledLayerBoundingBox.y,
             this._tileWidth,
             this._tileHeight
           );
-          this._debugGraphic.fill();
+          this.debugGraphic.fill();
     });
   }
 

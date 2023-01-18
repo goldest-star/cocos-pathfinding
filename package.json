@@ -5,10 +5,17 @@
   "creator": {
     "version": "3.6.2"
   },
+  "scripts": {
+    "deploy": "gh-pages -d build/web-desktop"
+  },
   "dependencies": {
     "@types/pathfinding": "^0.0.6",
     "density-clustering": "^1.3.0",
     "hull.js": "^1.0.3",
     "pathfinding": "^0.4.18"
-  }
+  },
+  "devDependencies": {
+    "gh-pages": "^4.0.0"
+  },
+  "description": "Pathfinding 2D in Cocos Creator"
 }

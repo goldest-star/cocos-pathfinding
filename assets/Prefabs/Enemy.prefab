@@ -318,7 +318,7 @@
     "__prefab": {
       "__id__": 15
     },
-    "moveDuration": 0.5,
+    "moveDuration": 0.3,
     "_id": ""
   },
   {
@@ -353,6 +353,7 @@
     "__prefab": {
       "__id__": 19
     },
+    "debug": false,
     "_id": ""
   },
   {
